@@ -1363,17 +1363,9 @@ function metDia(nome,data){
   const v=S.vendas.filter(x=>(x.data===data||x.data_venda===data)&&x.criadoPor===nome&&x.status==='fechado');
   const tc=S.tarefas.filter(x=>x.criadoPor===nome&&x.criadoEm&&x.criadoEm.startsWith(data)).length;
   const tk=S.tarefas.filter(x=>x.status==='concluido'&&x.prazo===data&&x.responsavel===nome).length;
-  // Include contracts created on this date
-  let recContratos = 0;
-  S.clientes.forEach(cli => {
-    (cli.contratos||[]).forEach(ct => {
-      if((ct.criadoEm||'').startsWith(data) && (ct.criadoPor===nome||!ct.criadoPor)) {
-        recContratos += parseFloat(ct.total||ct.valor_total||0);
-      }
-    });
-  });
-  const recTotal = v.reduce((s,x)=>s+(parseFloat(x.valor)||0),0) + recContratos;
-  return{entrada:p.entrada||'--',saida:p.saida||'--',horas:calcHoras(p),atend:a,vend:v.length+([...new Set(S.clientes.flatMap(cli=>(cli.contratos||[]).filter(ct=>(ct.criadoEm||'').startsWith(data)&&(ct.criadoPor===nome||!ct.criadoPor)).map(ct=>ct.id)))].length),rec:recTotal,tCri:tc,tCon:tk};
+  // Receita = vendas fechadas (source of truth)
+  const recTotal = v.reduce((s,x)=>s+(parseFloat(x.valor)||0),0);
+  return{entrada:p.entrada||'--',saida:p.saida||'--',horas:calcHoras(p),atend:a,vend:v.length,rec:recTotal,tCri:tc,tCon:tk};
 }
 function renderRelDia(colabs){
   const data=document.getElementById('rel-dia').value;if(!data)return;
@@ -1382,22 +1374,20 @@ function renderRelDia(colabs){
   document.getElementById('rel-detalhe').style.display='none';
   const ta=S.atendimentos.filter(a=>(a.data===data||a.data_atend===data)).length;
   const tv=S.vendas.filter(v=>(v.data===data||v.data_venda===data)&&v.status==='fechado');
-  let nCtDia=0, vlrCtDia=0, vlrRecDia=0;
+  const totalCtDia=tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  // Parcelas pagas neste dia
+  let vlrRecDia=0;
   S.clientes.forEach(cli=>{
     (cli.contratos||[]).forEach(ct=>{
-      if((ct.criadoEm||'').startsWith(data)){nCtDia++;vlrCtDia+=parseFloat(ct.total||ct.valor_total||0);}
       (ct.parcelas||[]).forEach(p=>{
-        if(p.pago){const dp2=p.dataPag||p.data_pagamento||'';if(dp2){const pts=dp2.split('/');if(pts.length===3&&pts[2]+'-'+pts[1]+'-'+pts[0]===data)vlrRecDia+=parseFloat(p.valor)||0;}}
+        if(p.pago){const dp2=p.dataPag||p.data_pagamento||'';if(dp2){const pts=dp2.split('/');if(pts.length===3){const iso=pts[2]+'-'+pts[1]+'-'+pts[0];if(iso===data)vlrRecDia+=parseFloat(p.valor)||0;}}}
       });
     });
   });
-  const recVendasDia=tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
-  const totalCtDia=vlrCtDia+recVendasDia;
-  const totalRecDia=vlrRecDia+recVendasDia;
   document.getElementById('rel-stats').innerHTML=`
     <div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div>
-    <div class="stat-card"><div class="stat-label">Contratos Fechados</div><div class="stat-val">${tv.length+nCtDia}</div><div class="stat-icon">📄</div><div class="stat-change">R$ ${totalCtDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:20px;color:var(--green);">R$ ${totalRecDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div></div>
+    <div class="stat-card"><div class="stat-label">Contratos Fechados</div><div class="stat-val">${tv.length}</div><div class="stat-icon">📄</div><div class="stat-change">R$ ${totalCtDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:20px;color:var(--green);">R$ ${vlrRecDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div><div class="stat-change" style="color:var(--muted);">de R$ ${totalCtDia.toLocaleString('pt-BR',{minimumFractionDigits:2})} contratado</div></div>
     <div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>
   `;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Atendimentos</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th>';
@@ -1412,15 +1402,13 @@ function renderRelMes(colabs){
   const dp=Object.keys(S.ponto).filter(d=>d.startsWith(mes)).length;
   const am=S.atendimentos.filter(a=>(a.data||a.data_atend||'').startsWith(mes));
   const vm=S.vendas.filter(v=>(v.data||v.data_venda||'').startsWith(mes)&&v.status==='fechado');
-  // Contracts created this month
-  let nContratos=0, vlrContratado=0, vlrRecebido=0;
+  // Vendas = contratos fechados (source of truth for count and total)
+  const nTotal=vm.length;
+  const totalContratado=vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  // Receita recebida = parcelas pagas no mês (from client fichas)
+  let vlrRecebido=0;
   S.clientes.forEach(cli=>{
     (cli.contratos||[]).forEach(ct=>{
-      if((ct.criadoEm||'').startsWith(mes)){
-        nContratos++;
-        vlrContratado+=parseFloat(ct.total||ct.valor_total||0);
-      }
-      // Parcelas pagas no mês (independente de quando foi criado o contrato)
       (ct.parcelas||[]).forEach(p=>{
         if(p.pago){
           const dp2=p.dataPag||p.data_pagamento||'';
@@ -1429,15 +1417,11 @@ function renderRelMes(colabs){
       });
     });
   });
-  const recVendas=vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
-  const totalContratado=vlrContratado+recVendas;
-  const totalRecebido=vlrRecebido+recVendas;
-  const nTotal=vm.length+nContratos;
   document.getElementById('rel-stats').innerHTML=`
     <div class="stat-card"><div class="stat-label">Dias com Ponto</div><div class="stat-val">${dp}</div><div class="stat-icon">🕐</div></div>
     <div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${am.length}</div><div class="stat-icon">📋</div></div>
     <div class="stat-card"><div class="stat-label">Contratos Fechados</div><div class="stat-val">${nTotal}</div><div class="stat-icon">📄</div><div class="stat-change">R$ ${totalContratado.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:22px;color:var(--green);">R$ ${totalRecebido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div><div class="stat-change" style="color:var(--muted);">de R$ ${totalContratado.toLocaleString('pt-BR',{minimumFractionDigits:2})} contratado</div></div>
+    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:22px;color:var(--green);">R$ ${vlrRecebido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div><div class="stat-change" style="color:var(--muted);">de R$ ${totalContratado.toLocaleString('pt-BR',{minimumFractionDigits:2})} contratado</div></div>
   `;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Dias Trab.</th><th>Total Horas</th><th>Atend.</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th><th></th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{
