@@ -570,6 +570,67 @@ textarea{resize:vertical;min-height:80px;}
 
 
 <script>
+
+// ═══════════ FIREBASE CONFIG ═══════════
+const FB_CONFIG = {
+  apiKey: "AIzaSyA3aZY5-z2Zgz9TN4keC1I3qZ-Doh-9FzM",
+  authDomain: "crm-camila-952a5.firebaseapp.com",
+  databaseURL: "https://crm-camila-952a5-default-rtdb.firebaseio.com",
+  projectId: "crm-camila-952a5",
+  storageBucket: "crm-camila-952a5.firebasestorage.app",
+  messagingSenderId: "440411536589",
+  appId: "1:440411536589:web:ad0d4d192c12b2b072fd84"
+};
+
+// Firebase DB URL for REST API (no SDK needed)
+const FB_URL = "https://crm-camila-952a5-default-rtdb.firebaseio.com";
+
+// ─── Firebase REST helpers ───
+async function fbGet(path) {
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json');
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
+}
+
+async function fbSet(path, data) {
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+async function fbPush(path, data) {
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
+}
+
+async function fbDelete(path) {
+  try {
+    await fetch(FB_URL + '/' + path + '.json', { method: 'DELETE' });
+  } catch(e) {}
+}
+
+
+
+function showLoader(msg) {
+  const el = document.getElementById('loader');
+  if (el) { el.style.display = 'flex'; document.getElementById('loader-msg').textContent = msg||'Aguarde...'; }
+}
+function hideLoader() {
+  const el = document.getElementById('loader');
+  if (el) el.style.display = 'none';
+}
 // ═══════════ STATE (localStorage) ═══════════
 // Colaboradores fixos — sempre atualizados, nunca sobrescritos pelo localStorage
 const COLABS_FIXOS = [
@@ -593,16 +654,51 @@ const extrasColab = (S.colaboradores || []).filter(c => c.id > 5);
 S.colaboradores = [...COLABS_FIXOS, ...extrasColab];
 
 function save() {
-  // Salva só os extras (id > 5) para não sobrescrever os fixos
+  // Save to localStorage as cache
   const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
   localStorage.setItem('crm_cb', JSON.stringify(sToSave));
+  // Sync to Firebase (non-blocking)
+  syncToFirebase();
+}
+
+let syncTimeout = null;
+function syncToFirebase() {
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async function() {
+    const data = {
+      clientes: S.clientes,
+      tarefas: S.tarefas,
+      atendimentos: S.atendimentos,
+      vendas: S.vendas,
+      ponto: S.ponto,
+      atividades: S.atividades.slice(0, 60)
+    };
+    await fbSet('crm', data);
+  }, 1000); // debounce 1s
+}
+
+async function loadFromFirebase() {
+  showLoader('Sincronizando dados...');
+  const data = await fbGet('crm');
+  if (data) {
+    if (data.clientes) S.clientes = data.clientes;
+    if (data.tarefas) S.tarefas = data.tarefas;
+    if (data.atendimentos) S.atendimentos = data.atendimentos;
+    if (data.vendas) S.vendas = data.vendas;
+    if (data.ponto) S.ponto = data.ponto;
+    if (data.atividades) S.atividades = data.atividades;
+    // Update localStorage cache
+    const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
+    localStorage.setItem('crm_cb', JSON.stringify(sToSave));
+  }
+  hideLoader();
 }
 function genId() { return Date.now() + Math.floor(Math.random()*1000); }
 
 // ═══════════ AUTH ═══════════
 let U = null;
 
-function fazerLogin() {
+async function fazerLogin() {
   const user = document.getElementById('login-user').value.trim().toLowerCase();
   const pass = document.getElementById('login-pass').value;
   const c = S.colaboradores.find(x => x.usuario && x.usuario.toLowerCase()===user && x.senha===btoa(pass));
@@ -610,6 +706,8 @@ function fazerLogin() {
   document.getElementById('login-erro').style.display='none';
   U = c;
   document.getElementById('login-screen').style.display='none';
+  // Load from Firebase first
+  await loadFromFirebase();
   atualizarSidebar();
   verificarRetencao();
   if (isCliente()) {
@@ -1278,6 +1376,7 @@ atualizarSidebar = function() {
     if (mt) mt.style.display = 'flex';
   }
 };
+
 
 </script>
 </body>
