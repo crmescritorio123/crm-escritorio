@@ -194,6 +194,42 @@ textarea{resize:vertical;min-height:80px;}
     .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat-val { font-size: 22px; }
   }
+
+  /* ═══ MOBILE CARDS — tabelas viram cards no celular ═══ */
+  @media (max-width: 768px) {
+    .mobile-cards thead { display: none; }
+    .mobile-cards tbody tr {
+      display: block;
+      background: var(--dark-4);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      padding: 10px 14px;
+    }
+    .mobile-cards tbody tr:hover { background: var(--dark-4); }
+    .mobile-cards td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      gap: 8px;
+    }
+    .mobile-cards td:last-child { border-bottom: none; padding-bottom: 0; }
+    .mobile-cards td:first-child { padding-top: 0; }
+    .mobile-cards td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+      flex-shrink: 0;
+      min-width: 90px;
+    }
+    .mobile-cards td:empty { display: none; }
+  }
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#C9A84C">
