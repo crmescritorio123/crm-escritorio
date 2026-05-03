@@ -195,6 +195,12 @@ textarea{resize:vertical;min-height:80px;}
     .stat-val { font-size: 22px; }
   }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C9A84C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CRM Camila">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 
@@ -1382,5 +1388,16 @@ atualizarSidebar = function() {
 
 
 </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function(reg) { console.log('SW registrado'); })
+      .catch(function(err) { console.log('SW erro:', err); });
+  });
+}
+</script>
+
 </body>
 </html>
