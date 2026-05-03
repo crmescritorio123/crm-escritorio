@@ -424,7 +424,7 @@ textarea{resize:vertical;min-height:80px;}
       <!-- TABELA -->
       <div class="card">
         <div class="card-header"><div class="card-title">Base de Clientes</div><input class="search-input" placeholder="🔍 Buscar cliente..." id="busca-cliente" oninput="renderClientes()"></div>
-        <table class='mobile-cards'><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th></tr></thead><tbody id="tbody-clientes"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th><th></th></tr></thead><tbody id="tbody-clientes"></tbody></table>
       </div>
     </section>
 
@@ -1079,7 +1079,7 @@ function salvarVenda(){
   const cli=document.getElementById('v-cli').value,serv=document.getElementById('v-serv').value.trim(),val=parseFloat(document.getElementById('v-valor').value);
   if(!cli||!serv||isNaN(val))return;
   const cn=S.clientes.find(c=>String(c.id)===String(cli))?.nome||cli;
-  S.vendas.unshift({id:genId(),clienteId:cli,clienteNome:cn,servico:serv,valor:val,data:document.getElementById('v-data').value,data_venda:document.getElementById('v-data').value,pgto:document.getElementById('v-pgto').value,forma_pagamento:document.getElementById('v-pgto').value,status:document.getElementById('v-status').value,obs:document.getElementById('v-obs').value,criadoPor:eu()});
+  S.vendas.unshift({id:genId(),clienteId:cli,clienteNome:cn,servico:serv,valor:val,data:document.getElementById('v-data').value,data_venda:document.getElementById('v-data').value,pgto:document.getElementById('v-pgto').value,forma_pagamento:document.getElementById('v-pgto').value,status:document.getElementById('v-status').value,obs:document.getElementById('v-obs').value,criadoPor:eu(),responsavel:eu()});
   addAtiv('💰 Venda: '+cn+' — R$'+val.toLocaleString('pt-BR',{minimumFractionDigits:2}));
   save();closeM('m-venda');renderVendas();
   document.getElementById('v-serv').value='';document.getElementById('v-valor').value='';document.getElementById('v-obs').value='';
@@ -1106,8 +1106,32 @@ function renderClientes(){
   const q=(document.getElementById('busca-cliente')?.value||'').toLowerCase();
   const list=S.clientes.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.cpf&&c.cpf.includes(q)));
   const tbody=document.getElementById('tbody-clientes');
-  tbody.innerHTML=list.map((c,i)=>`<tr><td data-label="Nome" style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td data-label="CPF/CNPJ" style="color:var(--muted)">${c.cpf||'-'}</td><td data-label="Telefone">${c.tel||'-'}</td><td data-label="E-mail" style="color:var(--muted)">${c.email||'-'}</td><td data-label="Área">${c.area||'-'}</td><td data-label="Status"><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty-state">Nenhum cliente</td></tr>';
+  tbody.innerHTML=list.map((c,i)=>`<tr><td data-label="Nome" style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td data-label="CPF/CNPJ" style="color:var(--muted)">${c.cpf||'-'}</td><td data-label="Telefone">${c.tel||'-'}</td><td data-label="E-mail" style="color:var(--muted)">${c.email||'-'}</td><td data-label="Área">${c.area||'-'}</td><td data-label="Status"><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td>${isAdmin()?`<td data-label=""><button class="btn btn-danger btn-sm" onclick="confirmarDelCliente(${c.id},event)">🗑</button></td>`:''}</tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum cliente</td></tr>';
   tbody.querySelectorAll('td[data-i]').forEach(td=>{td.onclick=function(){abrirFicha(list[parseInt(this.dataset.i)].id);};});
+}
+
+function confirmarDelCliente(id, event) {
+  event.stopPropagation();
+  const cli = S.clientes.find(x=>x.id===id);
+  if(!cli) return;
+  if(!confirm('⚠️ Apagar cliente "'+cli.nome+'" e TODOS os seus registros?\n\nIsso inclui:\n• Contratos e parcelas\n• Atendimentos\n• Acompanhamentos\n• Vendas\n\nEsta ação não pode ser desfeita!')) return;
+  deletarCliente(id);
+}
+
+function deletarCliente(id) {
+  const cli = S.clientes.find(x=>x.id===id);
+  if(!cli) return;
+  // Remove cliente
+  S.clientes = S.clientes.filter(x=>x.id!==id);
+  // Remove atendimentos do cliente
+  S.atendimentos = S.atendimentos.filter(a=>String(a.clienteId)!==String(id));
+  // Remove vendas do cliente
+  S.vendas = S.vendas.filter(v=>String(v.clienteId)!==String(id));
+  // Registro de atividade
+  addAtiv('🗑 Cliente removido: '+cli.nome);
+  save();
+  renderClientes();
+  renderDash();
 }
 
 function salvarCliente(){
@@ -1360,10 +1384,10 @@ function receitaContratosTotal(mesPrefix) {
 function metDia(nome,data){
   const p=getPonto(nome,data);
   const a=S.atendimentos.filter(x=>(x.data===data||x.data_atend===data)&&x.responsavel===nome).length;
-  const v=S.vendas.filter(x=>(x.data===data||x.data_venda===data)&&x.criadoPor===nome&&x.status==='fechado');
+  // Vendas: conta se criadoPor===nome OU responsavel===nome
+  const v=S.vendas.filter(x=>(x.data===data||x.data_venda===data)&&(x.criadoPor===nome||x.responsavel===nome)&&x.status==='fechado');
   const tc=S.tarefas.filter(x=>x.criadoPor===nome&&x.criadoEm&&x.criadoEm.startsWith(data)).length;
   const tk=S.tarefas.filter(x=>x.status==='concluido'&&x.prazo===data&&x.responsavel===nome).length;
-  // Receita = vendas fechadas (source of truth)
   const recTotal = v.reduce((s,x)=>s+(parseFloat(x.valor)||0),0);
   return{entrada:p.entrada||'--',saida:p.saida||'--',horas:calcHoras(p),atend:a,vend:v.length,rec:recTotal,tCri:tc,tCon:tk};
 }
@@ -1402,7 +1426,6 @@ function renderRelMes(colabs){
   const dp=Object.keys(S.ponto).filter(d=>d.startsWith(mes)).length;
   const am=S.atendimentos.filter(a=>(a.data||a.data_atend||'').startsWith(mes));
   const vm=S.vendas.filter(v=>(v.data||v.data_venda||'').startsWith(mes)&&v.status==='fechado');
-  // Vendas = contratos fechados (source of truth for count and total)
   const nTotal=vm.length;
   const totalContratado=vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
   // Receita recebida = parcelas pagas no mês (from client fichas)
@@ -1426,7 +1449,11 @@ function renderRelMes(colabs){
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Dias Trab.</th><th>Total Horas</th><th>Atend.</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th><th></th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{
     let dt=0,min=0,ta=0,tv=0,tr=0,tCri=0,tCon=0;
-    dias.forEach(data=>{const mm=metDia(c.nome,data);if(mm.entrada!=='--')dt++;const p=getPonto(c.nome,data);if(p.entrada&&p.saida){const parse=h=>{const[hh,mi]=h.split(':').map(Number);return hh*60+mi;};let mn=parse(p.saida)-parse(p.entrada);if(p.saida_almoco&&p.volta_almoco)mn-=(parse(p.volta_almoco)-parse(p.saida_almoco));if(mn>0)min+=mn;}ta+=mm.atend;tv+=mm.vend;tr+=mm.rec;tCri+=mm.tCri;tCon+=mm.tCon;});
+    // Vendas do mês por colaborador
+    const vendasMesColab=S.vendas.filter(v=>(v.data||v.data_venda||'').startsWith(mes)&&(v.criadoPor===c.nome||v.responsavel===c.nome)&&v.status==='fechado');
+    tv=vendasMesColab.length;
+    tr=vendasMesColab.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+    dias.forEach(data=>{const mm=metDia(c.nome,data);if(mm.entrada!=='--')dt++;const p=getPonto(c.nome,data);if(p.entrada&&p.saida){const parse=h=>{const[hh,mi]=h.split(':').map(Number);return hh*60+mi;};let mn=parse(p.saida)-parse(p.entrada);if(p.saida_almoco&&p.volta_almoco)mn-=(parse(p.volta_almoco)-parse(p.saida_almoco));if(mn>0)min+=mn;}ta+=mm.atend;tCri+=mm.tCri;tCon+=mm.tCon;});
     const hT=min>0?`${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`:'--';
     return`<tr><td data-label="Colaborador" style="font-weight:600">${c.nome}</td><td data-label="Dias Trab."><span class="tag tag-blue">${dt} dias</span></td><td data-label="Total Horas"><strong>${hT}</strong></td><td data-label="Atend.">${ta}</td><td data-label="Vendas">${tv}</td><td data-label="Receita" style="color:var(--gold);font-weight:600;">R$ ${tr.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="T.Criadas">${tCri}</td><td data-label="T.Conc.">${tCon}</td><td data-label=""><button class="btn btn-outline btn-sm" onclick="expandirRel('${c.nome}','${mes}')">Ver dias</button></td></tr>`;
   }).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
