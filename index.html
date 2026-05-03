@@ -327,7 +327,7 @@ textarea{resize:vertical;min-height:80px;}
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Histórico de Ponto</div><input type="month" id="filtro-mes-ponto" class="search-input" style="width:160px;" onchange="renderPontoHist()"></div>
-        <table><thead><tr><th>Colaborador</th><th>Data</th><th>Entrada</th><th>Saída Almoço</th><th>Volta</th><th>Saída</th><th>Total</th></tr></thead><tbody id="tbody-ponto"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Colaborador</th><th>Data</th><th>Entrada</th><th>Saída Almoço</th><th>Volta</th><th>Saída</th><th>Total</th></tr></thead><tbody id='tbody-ponto'></tbody></table>
       </div>
     </section>
 
@@ -348,7 +348,7 @@ textarea{resize:vertical;min-height:80px;}
     <section class="section" id="sec-atendimentos">
       <div class="card">
         <div class="card-header"><div class="card-title">Atendimentos</div><input class="search-input" placeholder="🔍 Buscar..." oninput="filtrarAtend(this.value)"></div>
-        <table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Responsável</th><th>Resumo</th><th>Status</th><th></th></tr></thead><tbody id="tbody-atend"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Responsável</th><th>Resumo</th><th>Status</th><th></th></tr></thead><tbody id="tbody-atend"></tbody></table>
       </div>
     </section>
 
@@ -361,7 +361,7 @@ textarea{resize:vertical;min-height:80px;}
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Pipeline de Vendas</div><input class="search-input" placeholder="🔍 Buscar..." oninput="filtrarVendas(this.value)"></div>
-        <table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Pagamento</th><th>Status</th><th></th></tr></thead><tbody id="tbody-vendas"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>Pagamento</th><th>Status</th><th></th></tr></thead><tbody id="tbody-vendas"></tbody></table>
       </div>
     </section>
 
@@ -377,9 +377,9 @@ textarea{resize:vertical;min-height:80px;}
         </div>
       </div>
       <div class="stat-grid" id="rel-stats"></div>
-      <div class="card"><div class="card-header"><div class="card-title" id="rel-title">Relatório</div></div><table><thead><tr id="rel-thead"></tr></thead><tbody id="tbody-rel"></tbody></table></div>
+      <div class="card"><div class="card-header"><div class="card-title" id="rel-title">Relatório</div></div><table class="mobile-cards"><thead><tr id="rel-thead"></tr></thead><tbody id="tbody-rel"></tbody></table></div>
       <div id="rel-detalhe" style="display:none;margin-top:20px;">
-        <div class="card"><div class="card-header"><div class="card-title" id="rel-det-title">Detalhe</div></div><table><thead><tr id="rel-det-thead"></tr></thead><tbody id="tbody-rel-det"></tbody></table></div>
+        <div class="card"><div class="card-header"><div class="card-title" id="rel-det-title">Detalhe</div></div><table class="mobile-cards"><thead><tr id="rel-det-thead"></tr></thead><tbody id="tbody-rel-det"></tbody></table></div>
       </div>
     </section>
 
@@ -388,7 +388,7 @@ textarea{resize:vertical;min-height:80px;}
       <!-- TABELA -->
       <div class="card">
         <div class="card-header"><div class="card-title">Base de Clientes</div><input class="search-input" placeholder="🔍 Buscar cliente..." id="busca-cliente" oninput="renderClientes()"></div>
-        <table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th></tr></thead><tbody id="tbody-clientes"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th></tr></thead><tbody id="tbody-clientes"></tbody></table>
       </div>
     </section>
 
@@ -396,7 +396,7 @@ textarea{resize:vertical;min-height:80px;}
     <section class="section" id="sec-colaboradores">
       <div class="card">
         <div class="card-header"><div class="card-title">Equipe do Escritório</div></div>
-        <table><thead><tr><th>Nome</th><th>Cargo</th><th>OAB</th><th>Usuário</th><th>Perfil</th><th>Status</th><th></th></tr></thead><tbody id="tbody-colab"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Nome</th><th>Cargo</th><th>OAB</th><th>Usuário</th><th>Perfil</th><th>Status</th><th></th></tr></thead><tbody id='tbody-colab'></tbody></table>
       </div>
     </section>
 
@@ -879,7 +879,7 @@ function renderPontoHist(){
   const dados=isAdmin()?S.ponto:Object.fromEntries(Object.entries(S.ponto).map(([d,u])=>[d,{[eu()]:u[eu()]}]).filter(([,u])=>u[eu()]));
   Object.entries(dados).filter(([d])=>d.startsWith(mes)).sort(([a],[b])=>b.localeCompare(a)).forEach(([data,users])=>{
     Object.entries(users).filter(([,p])=>p).forEach(([user,p])=>{
-      rows.push(`<tr><td>${user}</td><td>${new Date(data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>${p.entrada||'--'}</td><td>${p.saida_almoco||'--'}</td><td>${p.volta_almoco||'--'}</td><td>${p.saida||'--'}</td><td><strong>${calcHoras(p)}</strong></td></tr>`);
+      rows.push(`<tr><td data-label="Colaborador">${user}</td><td data-label="Data">${new Date(data+'T12:00:00').toLocaleDateString('pt-BR')}</td><td data-label="Entrada">${p.entrada||'--'}</td><td data-label="Saída Almoço">${p.saida_almoco||'--'}</td><td data-label="Volta">${p.volta_almoco||'--'}</td><td data-label="Saída">${p.saida||'--'}</td><td data-label="Total"><strong>${calcHoras(p)}</strong></td></tr>`);
     });
   });
   document.getElementById('tbody-ponto').innerHTML=rows.length?rows.join(''):'<tr><td colspan="7" class="empty-state">Sem registros</td></tr>';
@@ -1028,7 +1028,7 @@ const ST_TAG={concluido:'tag-green',pendente:'tag-gold',acompanhamento:'tag-blue
 const ST_LBL={concluido:'Concluído',pendente:'Pendente',acompanhamento:'Acompanhamento'};
 function renderAtend(){
   const list=meusA().filter(a=>!filtroA||a.clienteNome?.toLowerCase().includes(filtroA)||a.resumo?.toLowerCase().includes(filtroA));
-  document.getElementById('tbody-atend').innerHTML=list.length?list.map(a=>`<tr><td>${(a.data||a.data_atend)?new Date((a.data||a.data_atend)+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td style="font-weight:600">${a.clienteNome}</td><td>${a.tipo||'-'}</td><td style="color:var(--muted)">${a.responsavel||'-'}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.resumo}</td><td><span class="tag ${ST_TAG[a.status]||'tag-muted'}">${ST_LBL[a.status]||a.status}</span></td><td><button class="btn btn-danger btn-sm" onclick="delA(${a.id})">🗑</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nenhum atendimento</td></tr>';
+  document.getElementById('tbody-atend').innerHTML=list.length?list.map(a=>`<tr><td data-label="Data">${(a.data||a.data_atend)?new Date((a.data||a.data_atend)+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td data-label="Cliente" style="font-weight:600">${a.clienteNome}</td><td data-label="Tipo">${a.tipo||'-'}</td><td data-label="Responsável" style="color:var(--muted)">${a.responsavel||'-'}</td><td data-label="Resumo">${a.resumo}</td><td data-label="Status"><span class="tag ${ST_TAG[a.status]||'tag-muted'}">${ST_LBL[a.status]||a.status}</span></td><td data-label=""><button class="btn btn-danger btn-sm" onclick="delA(${a.id})">🗑</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nenhum atendimento</td></tr>';
 }
 function delA(id){S.atendimentos=S.atendimentos.filter(a=>a.id!==id);save();renderAtend();}
 
@@ -1054,7 +1054,7 @@ function renderVendas(){
   document.getElementById('v-tot').textContent=S.vendas.length;
   document.getElementById('v-rec').textContent='R$'+rec.toLocaleString('pt-BR',{minimumFractionDigits:2});
   document.getElementById('v-neg').textContent=minhasV().filter(v=>v.status==='negociacao'||v.status==='proposta').length;
-  document.getElementById('tbody-vendas').innerHTML=list.length?list.map(v=>`<tr><td>${(v.data||v.data_venda)?new Date((v.data||v.data_venda)+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td style="font-weight:600">${v.clienteNome}</td><td>${v.servico}</td><td style="color:var(--gold);font-weight:600;">R$ ${parseFloat(v.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="color:var(--muted)">${v.pgto||v.forma_pagamento||'-'}</td><td><span class="tag ${V_TAG[v.status]||'tag-muted'}">${V_LBL[v.status]||v.status}</span></td><td><button class="btn btn-danger btn-sm" onclick="delV(${v.id})">🗑</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nenhuma venda</td></tr>';
+  document.getElementById('tbody-vendas').innerHTML=list.length?list.map(v=>`<tr><td data-label="Data">${(v.data||v.data_venda)?new Date((v.data||v.data_venda)+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td data-label="Cliente" style="font-weight:600">${v.clienteNome}</td><td data-label="Serviço">${v.servico}</td><td data-label="Valor" style="color:var(--gold);font-weight:600;">R$ ${parseFloat(v.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="Pagamento" style="color:var(--muted)">${v.pgto||v.forma_pagamento||'-'}</td><td data-label="Status"><span class="tag ${V_TAG[v.status]||'tag-muted'}">${V_LBL[v.status]||v.status}</span></td><td data-label=""><button class="btn btn-danger btn-sm" onclick="delV(${v.id})">🗑</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nenhuma venda</td></tr>';
 }
 function delV(id){S.vendas=S.vendas.filter(v=>v.id!==id);save();renderVendas();}
 
@@ -1067,7 +1067,7 @@ function renderClientes(){
   const q=(document.getElementById('busca-cliente')?.value||'').toLowerCase();
   const list=S.clientes.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.cpf&&c.cpf.includes(q)));
   const tbody=document.getElementById('tbody-clientes');
-  tbody.innerHTML=list.map((c,i)=>`<tr><td style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td style="color:var(--muted)">${c.cpf||'-'}</td><td>${c.tel||'-'}</td><td style="color:var(--muted)">${c.email||'-'}</td><td>${c.area||'-'}</td><td><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty-state">Nenhum cliente</td></tr>';
+  tbody.innerHTML=list.map((c,i)=>`<tr><td data-label="Nome" style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td data-label="CPF/CNPJ" style="color:var(--muted)">${c.cpf||'-'}</td><td data-label="Telefone">${c.tel||'-'}</td><td data-label="E-mail" style="color:var(--muted)">${c.email||'-'}</td><td data-label="Área">${c.area||'-'}</td><td data-label="Status"><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty-state">Nenhum cliente</td></tr>';
   tbody.querySelectorAll('td[data-i]').forEach(td=>{td.onclick=function(){abrirFicha(list[parseInt(this.dataset.i)].id);};});
 }
 
@@ -1248,7 +1248,7 @@ const ST_C={ativo:'tag-green',ferias:'tag-gold',inativo:'tag-muted'};
 
 function renderColab(){
   const list=isAdmin()?S.colaboradores:S.colaboradores.filter(c=>c.id===U?.id);
-  document.getElementById('tbody-colab').innerHTML=list.map(c=>`<tr><td style="font-weight:600">${c.nome}</td><td>${c.cargo||'-'}</td><td style="color:var(--muted)">${c.oab||'-'}</td><td style="color:var(--muted)">${c.usuario?'@'+c.usuario:'<em style="color:var(--red)">sem login</em>'}</td><td><span class="tag ${PT[c.perfil]||'tag-muted'}">${PL[c.perfil]||'-'}</span></td><td><span class="tag ${ST_C[c.status]||'tag-muted'}">${c.status||'-'}</span></td><td style="display:flex;gap:5px;">${isAdmin()&&c.id!==1?`<button class="btn btn-outline btn-sm" onclick="editColab(${c.id})">✏</button><button class="btn btn-danger btn-sm" onclick="delColab(${c.id})">🗑</button>`:c.id===1?'<span class="tag tag-gold">Admin</span>':''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum colaborador</td></tr>';
+  document.getElementById('tbody-colab').innerHTML=list.map(c=>`<tr><td data-label="Nome" style="font-weight:600">${c.nome}</td><td data-label="Cargo">${c.cargo||'-'}</td><td data-label="OAB" style="color:var(--muted)">${c.oab||'-'}</td><td data-label="Usuário" style="color:var(--muted)">${c.usuario?'@'+c.usuario:'<em style="color:var(--red)">sem login</em>'}</td><td data-label="Perfil"><span class="tag ${PT[c.perfil]||'tag-muted'}">${PL[c.perfil]||'-'}</span></td><td data-label="Status"><span class="tag ${ST_C[c.status]||'tag-muted'}">${c.status||'-'}</span></td><td data-label="Ações" style="display:flex;gap:5px;">${isAdmin()&&c.id!==1?`<button class="btn btn-outline btn-sm" onclick="editColab(${c.id})">✏</button><button class="btn btn-danger btn-sm" onclick="delColab(${c.id})">🗑</button>`:c.id===1?'<span class="tag tag-gold">Admin</span>':''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum colaborador</td></tr>';
 }
 
 function editColab(id){
@@ -1298,7 +1298,7 @@ function renderRelDia(colabs){
   const tv=S.vendas.filter(v=>(v.data===data||v.data_venda===data)&&v.status==='fechado');
   document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Vendas</div><div class="stat-val">${tv.length}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita</div><div class="stat-val" style="font-size:20px;">R$ ${tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div><div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>`;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Atendimentos</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th>';
-  document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{const m=metDia(c.nome,data);return`<tr><td style="font-weight:600">${c.nome}</td><td>${m.entrada!=='--'?`<span class="tag tag-green">${m.entrada}</span>`:'<span class="tag tag-muted">--</span>'}</td><td>${m.saida!=='--'?`<span class="tag tag-red">${m.saida}</span>`:'<span class="tag tag-muted">--</span>'}</td><td><strong>${m.horas}</strong></td><td>${m.atend}</td><td>${m.vend}</td><td style="color:var(--gold);font-weight:600;">R$ ${m.rec.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td>${m.tCri}</td><td>${m.tCon}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
+  document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{const m=metDia(c.nome,data);return`<tr><td data-label="Colaborador" style="font-weight:600">${c.nome}</td><td data-label="Entrada">${m.entrada!=='--'?`<span class="tag tag-green">${m.entrada}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Saída">${m.saida!=='--'?`<span class="tag tag-red">${m.saida}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Horas"><strong>${m.horas}</strong></td><td data-label="Atend.">${m.atend}</td><td data-label="Vendas">${m.vend}</td><td data-label="Receita" style="color:var(--gold);font-weight:600;">R$ ${m.rec.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="T.Cri.">${m.tCri}</td><td data-label="T.Con.">${m.tCon}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
 }
 function renderRelMes(colabs){
   const mes=document.getElementById('rel-mes').value;if(!mes)return;
@@ -1315,7 +1315,7 @@ function renderRelMes(colabs){
     let dt=0,min=0,ta=0,tv=0,tr=0,tCri=0,tCon=0;
     dias.forEach(data=>{const mm=metDia(c.nome,data);if(mm.entrada!=='--')dt++;const p=getPonto(c.nome,data);if(p.entrada&&p.saida){const parse=h=>{const[hh,mi]=h.split(':').map(Number);return hh*60+mi;};let mn=parse(p.saida)-parse(p.entrada);if(p.saida_almoco&&p.volta_almoco)mn-=(parse(p.volta_almoco)-parse(p.saida_almoco));if(mn>0)min+=mn;}ta+=mm.atend;tv+=mm.vend;tr+=mm.rec;tCri+=mm.tCri;tCon+=mm.tCon;});
     const hT=min>0?`${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`:'--';
-    return`<tr><td style="font-weight:600">${c.nome}</td><td><span class="tag tag-blue">${dt} dias</span></td><td><strong>${hT}</strong></td><td>${ta}</td><td>${tv}</td><td style="color:var(--gold);font-weight:600;">R$ ${tr.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td>${tCri}</td><td>${tCon}</td><td><button class="btn btn-outline btn-sm" onclick="expandirRel('${c.nome}','${mes}')">Ver dias</button></td></tr>`;
+    return`<tr><td data-label="Colaborador" style="font-weight:600">${c.nome}</td><td data-label="Dias Trab."><span class="tag tag-blue">${dt} dias</span></td><td data-label="Total Horas"><strong>${hT}</strong></td><td data-label="Atend.">${ta}</td><td data-label="Vendas">${tv}</td><td data-label="Receita" style="color:var(--gold);font-weight:600;">R$ ${tr.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="T.Criadas">${tCri}</td><td data-label="T.Conc.">${tCon}</td><td data-label=""><button class="btn btn-outline btn-sm" onclick="expandirRel('${c.nome}','${mes}')">Ver dias</button></td></tr>`;
   }).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
 }
 function expandirRel(nome,mes){
