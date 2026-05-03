@@ -128,72 +128,69 @@ textarea{resize:vertical;min-height:80px;}
 #retencao-banner{display:none;background:rgba(201,168,76,.12);border-bottom:1px solid var(--border-s);padding:10px 32px;font-size:12px;color:var(--gold);line-height:1.8;}
 
   /* ═══ RESPONSIVE MOBILE ═══ */
+  /* HAMBURGER BUTTON */
+  .hamburger {
+    display: none; background: none; border: none;
+    color: var(--gold); font-size: 22px; cursor: pointer;
+    padding: 4px 8px; line-height: 1;
+  }
+  /* MOBILE DRAWER */
+  .mobile-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.6); z-index: 50;
+  }
+  .mobile-overlay.open { display: block; }
+  .sidebar-drawer {
+    position: fixed; top: 0; left: -280px; width: 270px; height: 100vh;
+    background: var(--dark-2); border-right: 1px solid var(--border);
+    z-index: 51; transition: left .25s ease; display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-drawer.open { left: 0; }
+
   @media (max-width: 768px) {
     body { flex-direction: column; overflow: auto; }
-    .sidebar {
-      width: 100%; min-width: unset; height: auto;
-      flex-direction: row; flex-wrap: wrap;
-      border-right: none; border-bottom: 1px solid var(--border);
+    /* Hide desktop sidebar */
+    .sidebar { display: none; }
+    /* Show mobile topbar */
+    .mobile-topbar {
+      display: flex !important; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--dark-2);
+      border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 20;
     }
-    .logo-area { padding: 12px 16px; border-bottom: none; flex: 1; }
-    .logo-title { font-size: 14px; }
-    .logo-sub { display: none; }
-    .nav {
-      display: flex; flex-direction: row; flex-wrap: wrap;
-      padding: 6px 8px; gap: 4px; width: 100%;
-      border-top: 1px solid var(--border);
-    }
-    .nav-label { display: none; }
-    .nav-item {
-      padding: 6px 10px; font-size: 11px; gap: 5px;
-      border-radius: 20px; margin-bottom: 0;
-    }
-    .nav-item .icon { font-size: 13px; width: auto; }
-    .badge { font-size: 9px; padding: 0 5px; }
-    .user-area {
-      padding: 8px 16px; border-top: none;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .user-row { gap: 6px; }
-    .avatar { width: 28px; height: 28px; font-size: 11px; }
-    .user-name { font-size: 11px; }
-    .user-sub, .user-perfil { display: none; }
-    .btn-logout { font-size: 10px; margin-top: 0; }
+    .hamburger { display: block; }
     .main { height: auto; overflow: visible; }
-    .topbar { padding: 14px 16px; position: relative; }
-    .page-title { font-size: 20px; }
-    .content { padding: 16px; }
-    .stat-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
+    .topbar { padding: 12px 16px; }
+    .page-title { font-size: 18px; }
+    .content { padding: 14px; }
+    .stat-grid { grid-template-columns: repeat(2,1fr); gap:10px; }
     .stat-val { font-size: 26px; }
     .dash-grid { grid-template-columns: 1fr; }
     .kanban { grid-template-columns: 1fr; gap: 12px; }
     .kanban-col-body { min-height: 80px; }
     table { font-size: 11px; }
-    thead th { padding: 8px 8px; font-size: 9px; }
-    td { padding: 8px 8px; }
-    .modal { padding: 20px; width: 95vw !important; max-height: 85vh; }
+    thead th { padding: 8px; font-size: 9px; }
+    td { padding: 8px; }
+    .modal { padding: 18px; width: 95vw !important; max-height: 88vh; }
     .form-grid { grid-template-columns: 1fr; }
     .ponto-actions { gap: 8px; }
     .btn-ponto { min-width: 120px; padding: 10px 16px; font-size: 12px; }
-    .clock-display { font-size: 48px; padding: 24px 0 8px; }
+    .clock-display { font-size: 44px; padding: 20px 0 8px; }
     .ponto-status { gap: 8px; }
     .ponto-item { min-width: 80px; padding: 8px 12px; }
-    .ponto-item-val { font-size: 17px; }
-    #mf-grid .form-group, .form-grid .form-group { grid-column: 1 / -1; }
-    .ficha-tab { padding: 8px 12px; font-size: 12px; }
-    [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
-    [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+    .ponto-item-val { font-size: 16px; }
+    .form-group { grid-column: 1 / -1; }
+    .ficha-tab { padding: 8px 10px; font-size: 12px; }
     #rel-stats { grid-template-columns: repeat(2,1fr); }
     .card-header { flex-wrap: wrap; gap: 10px; }
     .search-input { width: 100% !important; }
+    [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+    [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
   }
   @media (max-width: 480px) {
     .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat-val { font-size: 22px; }
-    .nav-item span:not(.icon):not(.badge) { display: none; }
-    .nav-item { padding: 8px; border-radius: 50%; width: 36px; height: 36px; justify-content: center; }
-    .nav-item.active { border-radius: 50%; }
   }
 </style>
 </head>
@@ -227,6 +224,29 @@ textarea{resize:vertical;min-height:80px;}
       <div id="login-erro" style="color:var(--red);font-size:12px;text-align:center;margin-top:12px;display:none;">Usuário ou senha incorretos.</div>
     </div>
   </div>
+</div>
+
+<!-- MOBILE OVERLAY -->
+<div class="mobile-overlay" id="mob-overlay" onclick="closeMobileMenu()"></div>
+
+<!-- MOBILE TOPBAR -->
+<div class="mobile-topbar" style="display:none;">
+  <button class="hamburger" onclick="openMobileMenu()">☰</button>
+  <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:var(--gold);">Camila Bitencourt</div>
+  <div id="mob-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dim),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;color:var(--dark);">CB</div>
+</div>
+
+<!-- SIDEBAR DRAWER (mobile) -->
+<div class="sidebar-drawer" id="sidebar-drawer">
+  <div class="logo-area" style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div class="logo-title">Camila Bitencourt<br>Advogados</div>
+      <div class="logo-sub">OAB/RJ 189.580</div>
+    </div>
+    <button onclick="closeMobileMenu()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+  </div>
+  <nav class="nav" id="drawer-nav"></nav>
+  <div class="user-area" id="drawer-user"></div>
 </div>
 
 <!-- SIDEBAR -->
@@ -1217,6 +1237,48 @@ function verificarRetencao(){
 // ═══════════ INIT ═══════════
 document.getElementById('login-screen').style.display='flex';
 document.getElementById('loader').style.display='none';
+
+// ═══════════ MOBILE MENU ═══════════
+function openMobileMenu() {
+  document.getElementById('sidebar-drawer').classList.add('open');
+  document.getElementById('mob-overlay').classList.add('open');
+  // Sync drawer nav from sidebar
+  const drawerNav = document.getElementById('drawer-nav');
+  drawerNav.innerHTML = document.querySelector('.sidebar .nav').innerHTML;
+  // Re-attach onclick handlers
+  drawerNav.querySelectorAll('.nav-item').forEach(function(item) {
+    var orig = item.getAttribute('onclick');
+    if (orig) {
+      item.onclick = function() {
+        eval(orig);
+        closeMobileMenu();
+      };
+    }
+  });
+  // Sync user area
+  document.getElementById('drawer-user').innerHTML = document.querySelector('.sidebar .user-area').innerHTML;
+}
+
+function closeMobileMenu() {
+  document.getElementById('sidebar-drawer').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('open');
+}
+
+// Patch atualizarSidebar to also update mobile avatar
+const _origAtualizarSidebar = atualizarSidebar;
+atualizarSidebar = function() {
+  _origAtualizarSidebar();
+  if (U) {
+    const parts = U.nome.replace('Dra. ','').replace('Dr. ','').split(' ');
+    const ini = (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+    const mobAv = document.getElementById('mob-avatar');
+    if (mobAv) mobAv.textContent = ini;
+    // Show mobile topbar
+    const mt = document.querySelector('.mobile-topbar');
+    if (mt) mt.style.display = 'flex';
+  }
+};
+
 </script>
 </body>
 </html>
