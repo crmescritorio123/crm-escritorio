@@ -388,7 +388,7 @@ textarea{resize:vertical;min-height:80px;}
       <!-- TABELA -->
       <div class="card">
         <div class="card-header"><div class="card-title">Base de Clientes</div><input class="search-input" placeholder="🔍 Buscar cliente..." id="busca-cliente" oninput="renderClientes()"></div>
-        <table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th><th></th></tr></thead><tbody id="tbody-clientes"></tbody></table>
+        <table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th></tr></thead><tbody id="tbody-clientes"></tbody></table>
       </div>
     </section>
 
@@ -1067,8 +1067,8 @@ function renderClientes(){
   const q=(document.getElementById('busca-cliente')?.value||'').toLowerCase();
   const list=S.clientes.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.cpf&&c.cpf.includes(q)));
   const tbody=document.getElementById('tbody-clientes');
-  tbody.innerHTML=list.map((c,i)=>`<tr><td style="font-weight:600">${c.nome}</td><td style="color:var(--muted)">${c.cpf||'-'}</td><td>${c.tel||'-'}</td><td style="color:var(--muted)">${c.email||'-'}</td><td>${c.area||'-'}</td><td><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td><td><button class="btn btn-gold btn-sm" data-i="${i}">👁 Ver ficha</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum cliente</td></tr>';
-  tbody.querySelectorAll('button[data-i]').forEach(btn=>{btn.onclick=function(){abrirFicha(list[parseInt(this.dataset.i)].id);};});
+  tbody.innerHTML=list.map((c,i)=>`<tr><td style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td style="color:var(--muted)">${c.cpf||'-'}</td><td>${c.tel||'-'}</td><td style="color:var(--muted)">${c.email||'-'}</td><td>${c.area||'-'}</td><td><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty-state">Nenhum cliente</td></tr>';
+  tbody.querySelectorAll('td[data-i]').forEach(td=>{td.onclick=function(){abrirFicha(list[parseInt(this.dataset.i)].id);};});
 }
 
 function salvarCliente(){
