@@ -1317,13 +1317,60 @@ function renderRel(){
   if(tipo==='diario')renderRelDia(colabs);else renderRelMes(colabs);
 }
 function getPonto(nome,data){return(S.ponto[data]&&S.ponto[data][nome])||{};}
+function receitaContratos(mes) {
+  // Soma parcelas pagas nos clientes no mês informado (formato YYYY-MM)
+  let total = 0;
+  S.clientes.forEach(cli => {
+    (cli.contratos||[]).forEach(ct => {
+      (ct.parcelas||[]).forEach(p => {
+        if(p.pago) {
+          const dataPag = p.dataPag || p.data_pagamento || '';
+          // dataPag format: DD/MM/YYYY
+          if(dataPag) {
+            const parts = dataPag.split('/');
+            if(parts.length===3) {
+              const isoMes = parts[2]+'-'+parts[1];
+              if(isoMes === mes) total += parseFloat(p.valor)||0;
+            }
+          }
+        }
+      });
+    });
+  });
+  return total;
+}
+
+function receitaContratosTotal(mesPrefix) {
+  // Soma TODOS os contratos criados no mês (pelo criadoEm)
+  let total = 0;
+  S.clientes.forEach(cli => {
+    (cli.contratos||[]).forEach(ct => {
+      const criado = ct.criadoEm||'';
+      if(criado.startsWith(mesPrefix)) {
+        total += parseFloat(ct.total||ct.valor_total||0);
+      }
+    });
+  });
+  return total;
+}
+
 function metDia(nome,data){
   const p=getPonto(nome,data);
   const a=S.atendimentos.filter(x=>(x.data===data||x.data_atend===data)&&x.responsavel===nome).length;
   const v=S.vendas.filter(x=>(x.data===data||x.data_venda===data)&&x.criadoPor===nome&&x.status==='fechado');
   const tc=S.tarefas.filter(x=>x.criadoPor===nome&&x.criadoEm&&x.criadoEm.startsWith(data)).length;
   const tk=S.tarefas.filter(x=>x.status==='concluido'&&x.prazo===data&&x.responsavel===nome).length;
-  return{entrada:p.entrada||'--',saida:p.saida||'--',horas:calcHoras(p),atend:a,vend:v.length,rec:v.reduce((s,x)=>s+(parseFloat(x.valor)||0),0),tCri:tc,tCon:tk};
+  // Include contracts created on this date
+  let recContratos = 0;
+  S.clientes.forEach(cli => {
+    (cli.contratos||[]).forEach(ct => {
+      if((ct.criadoEm||'').startsWith(data) && (ct.criadoPor===nome||!ct.criadoPor)) {
+        recContratos += parseFloat(ct.total||ct.valor_total||0);
+      }
+    });
+  });
+  const recTotal = v.reduce((s,x)=>s+(parseFloat(x.valor)||0),0) + recContratos;
+  return{entrada:p.entrada||'--',saida:p.saida||'--',horas:calcHoras(p),atend:a,vend:v.length+([...new Set(S.clientes.flatMap(cli=>(cli.contratos||[]).filter(ct=>(ct.criadoEm||'').startsWith(data)&&(ct.criadoPor===nome||!ct.criadoPor)).map(ct=>ct.id)))].length),rec:recTotal,tCri:tc,tCon:tk};
 }
 function renderRelDia(colabs){
   const data=document.getElementById('rel-dia').value;if(!data)return;
@@ -1332,7 +1379,10 @@ function renderRelDia(colabs){
   document.getElementById('rel-detalhe').style.display='none';
   const ta=S.atendimentos.filter(a=>(a.data===data||a.data_atend===data)).length;
   const tv=S.vendas.filter(v=>(v.data===data||v.data_venda===data)&&v.status==='fechado');
-  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Vendas</div><div class="stat-val">${tv.length}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita</div><div class="stat-val" style="font-size:20px;">R$ ${tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div><div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>`;
+  let nCtDia=0, recCtDia=0;
+  S.clientes.forEach(cli=>{(cli.contratos||[]).forEach(ct=>{if((ct.criadoEm||'').startsWith(data)){nCtDia++;recCtDia+=parseFloat(ct.total||ct.valor_total||0);}});});
+  const recDiaTotal=tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0)+recCtDia;
+  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Contratos/Vendas</div><div class="stat-val">${tv.length+nCtDia}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita</div><div class="stat-val" style="font-size:20px;">R$ ${recDiaTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div><div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>`;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Atendimentos</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{const m=metDia(c.nome,data);return`<tr><td data-label="Colaborador" style="font-weight:600">${c.nome}</td><td data-label="Entrada">${m.entrada!=='--'?`<span class="tag tag-green">${m.entrada}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Saída">${m.saida!=='--'?`<span class="tag tag-red">${m.saida}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Horas"><strong>${m.horas}</strong></td><td data-label="Atend.">${m.atend}</td><td data-label="Vendas">${m.vend}</td><td data-label="Receita" style="color:var(--gold);font-weight:600;">R$ ${m.rec.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="T.Cri.">${m.tCri}</td><td data-label="T.Con.">${m.tCon}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
 }
@@ -1345,7 +1395,13 @@ function renderRelMes(colabs){
   const dp=Object.keys(S.ponto).filter(d=>d.startsWith(mes)).length;
   const am=S.atendimentos.filter(a=>(a.data||a.data_atend||'').startsWith(mes));
   const vm=S.vendas.filter(v=>(v.data||v.data_venda||'').startsWith(mes)&&v.status==='fechado');
-  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Dias com Ponto</div><div class="stat-val">${dp}</div><div class="stat-icon">🕐</div></div><div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${am.length}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Contratos</div><div class="stat-val">${vm.length}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita</div><div class="stat-val" style="font-size:20px;">R$ ${vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div>`;
+  // Count contracts created this month
+  let nContratos=0, recContratos=0;
+  S.clientes.forEach(cli=>{(cli.contratos||[]).forEach(ct=>{if((ct.criadoEm||'').startsWith(mes)){nContratos++;recContratos+=parseFloat(ct.total||ct.valor_total||0);}});});
+  const recVendas=vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  const recTotal=recVendas+recContratos;
+  const nTotal=vm.length+nContratos;
+  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Dias com Ponto</div><div class="stat-val">${dp}</div><div class="stat-icon">🕐</div></div><div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${am.length}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Contratos/Vendas</div><div class="stat-val">${nTotal}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita Total</div><div class="stat-val" style="font-size:20px;">R$ ${recTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div>`;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Dias Trab.</th><th>Total Horas</th><th>Atend.</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th><th></th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{
     let dt=0,min=0,ta=0,tv=0,tr=0,tCri=0,tCon=0;
