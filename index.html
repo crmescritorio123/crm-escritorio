@@ -861,7 +861,10 @@ function renderDash() {
   document.getElementById('st-cli').textContent=S.clientes.length;
   document.getElementById('st-tar').textContent=minhasT().filter(t=>t.status!=='concluido').length;
   document.getElementById('st-ate').textContent=meusA().length;
-  const rec=minhasV().filter(v=>v.status==='fechado').reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  const recVendasD=minhasV().filter(v=>v.status==='fechado').reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  let recParcelasD=0;
+  S.clientes.forEach(cli=>{(cli.contratos||[]).forEach(ct=>{(ct.parcelas||[]).forEach(p=>{if(p.pago)recParcelasD+=parseFloat(p.valor)||0;});});});
+  const rec=recVendasD+recParcelasD;
   document.getElementById('st-rec').textContent=rec>0?'R$'+(rec>=1000?(rec/1000).toFixed(1)+'k':rec.toFixed(0)):'R$0';
   document.getElementById('badge-tarefas').textContent=minhasT().filter(t=>t.status!=='concluido').length;
   const ativs=isAdmin()?S.atividades:S.atividades.filter(a=>!a.autor||a.autor===eu());
@@ -1379,10 +1382,24 @@ function renderRelDia(colabs){
   document.getElementById('rel-detalhe').style.display='none';
   const ta=S.atendimentos.filter(a=>(a.data===data||a.data_atend===data)).length;
   const tv=S.vendas.filter(v=>(v.data===data||v.data_venda===data)&&v.status==='fechado');
-  let nCtDia=0, recCtDia=0;
-  S.clientes.forEach(cli=>{(cli.contratos||[]).forEach(ct=>{if((ct.criadoEm||'').startsWith(data)){nCtDia++;recCtDia+=parseFloat(ct.total||ct.valor_total||0);}});});
-  const recDiaTotal=tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0)+recCtDia;
-  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Contratos/Vendas</div><div class="stat-val">${tv.length+nCtDia}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita</div><div class="stat-val" style="font-size:20px;">R$ ${recDiaTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div><div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>`;
+  let nCtDia=0, vlrCtDia=0, vlrRecDia=0;
+  S.clientes.forEach(cli=>{
+    (cli.contratos||[]).forEach(ct=>{
+      if((ct.criadoEm||'').startsWith(data)){nCtDia++;vlrCtDia+=parseFloat(ct.total||ct.valor_total||0);}
+      (ct.parcelas||[]).forEach(p=>{
+        if(p.pago){const dp2=p.dataPag||p.data_pagamento||'';if(dp2){const pts=dp2.split('/');if(pts.length===3&&pts[2]+'-'+pts[1]+'-'+pts[0]===data)vlrRecDia+=parseFloat(p.valor)||0;}}
+      });
+    });
+  });
+  const recVendasDia=tv.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  const totalCtDia=vlrCtDia+recVendasDia;
+  const totalRecDia=vlrRecDia+recVendasDia;
+  document.getElementById('rel-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${ta}</div><div class="stat-icon">📋</div></div>
+    <div class="stat-card"><div class="stat-label">Contratos Fechados</div><div class="stat-val">${tv.length+nCtDia}</div><div class="stat-icon">📄</div><div class="stat-change">R$ ${totalCtDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:20px;color:var(--green);">R$ ${totalRecDia.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div></div>
+    <div class="stat-card"><div class="stat-label">Tarefas</div><div class="stat-val">${S.tarefas.filter(t=>t.criadoEm&&t.criadoEm.startsWith(data)).length}</div><div class="stat-icon">✅</div></div>
+  `;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Atendimentos</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{const m=metDia(c.nome,data);return`<tr><td data-label="Colaborador" style="font-weight:600">${c.nome}</td><td data-label="Entrada">${m.entrada!=='--'?`<span class="tag tag-green">${m.entrada}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Saída">${m.saida!=='--'?`<span class="tag tag-red">${m.saida}</span>`:'<span class="tag tag-muted">--</span>'}</td><td data-label="Horas"><strong>${m.horas}</strong></td><td data-label="Atend.">${m.atend}</td><td data-label="Vendas">${m.vend}</td><td data-label="Receita" style="color:var(--gold);font-weight:600;">R$ ${m.rec.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="T.Cri.">${m.tCri}</td><td data-label="T.Con.">${m.tCon}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty-state">Sem dados</td></tr>';
 }
@@ -1395,13 +1412,33 @@ function renderRelMes(colabs){
   const dp=Object.keys(S.ponto).filter(d=>d.startsWith(mes)).length;
   const am=S.atendimentos.filter(a=>(a.data||a.data_atend||'').startsWith(mes));
   const vm=S.vendas.filter(v=>(v.data||v.data_venda||'').startsWith(mes)&&v.status==='fechado');
-  // Count contracts created this month
-  let nContratos=0, recContratos=0;
-  S.clientes.forEach(cli=>{(cli.contratos||[]).forEach(ct=>{if((ct.criadoEm||'').startsWith(mes)){nContratos++;recContratos+=parseFloat(ct.total||ct.valor_total||0);}});});
+  // Contracts created this month
+  let nContratos=0, vlrContratado=0, vlrRecebido=0;
+  S.clientes.forEach(cli=>{
+    (cli.contratos||[]).forEach(ct=>{
+      if((ct.criadoEm||'').startsWith(mes)){
+        nContratos++;
+        vlrContratado+=parseFloat(ct.total||ct.valor_total||0);
+      }
+      // Parcelas pagas no mês (independente de quando foi criado o contrato)
+      (ct.parcelas||[]).forEach(p=>{
+        if(p.pago){
+          const dp2=p.dataPag||p.data_pagamento||'';
+          if(dp2){const pts=dp2.split('/');if(pts.length===3&&pts[2]+'-'+pts[1]===mes)vlrRecebido+=parseFloat(p.valor)||0;}
+        }
+      });
+    });
+  });
   const recVendas=vm.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
-  const recTotal=recVendas+recContratos;
+  const totalContratado=vlrContratado+recVendas;
+  const totalRecebido=vlrRecebido+recVendas;
   const nTotal=vm.length+nContratos;
-  document.getElementById('rel-stats').innerHTML=`<div class="stat-card"><div class="stat-label">Dias com Ponto</div><div class="stat-val">${dp}</div><div class="stat-icon">🕐</div></div><div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${am.length}</div><div class="stat-icon">📋</div></div><div class="stat-card"><div class="stat-label">Contratos/Vendas</div><div class="stat-val">${nTotal}</div><div class="stat-icon">💰</div></div><div class="stat-card"><div class="stat-label">Receita Total</div><div class="stat-val" style="font-size:20px;">R$ ${recTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">📈</div></div>`;
+  document.getElementById('rel-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Dias com Ponto</div><div class="stat-val">${dp}</div><div class="stat-icon">🕐</div></div>
+    <div class="stat-card"><div class="stat-label">Atendimentos</div><div class="stat-val">${am.length}</div><div class="stat-icon">📋</div></div>
+    <div class="stat-card"><div class="stat-label">Contratos Fechados</div><div class="stat-val">${nTotal}</div><div class="stat-icon">📄</div><div class="stat-change">R$ ${totalContratado.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card"><div class="stat-label">Receita Recebida</div><div class="stat-val" style="font-size:22px;color:var(--green);">R$ ${totalRecebido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-icon">💰</div><div class="stat-change" style="color:var(--muted);">de R$ ${totalContratado.toLocaleString('pt-BR',{minimumFractionDigits:2})} contratado</div></div>
+  `;
   document.getElementById('rel-thead').innerHTML='<th>Colaborador</th><th>Dias Trab.</th><th>Total Horas</th><th>Atend.</th><th>Vendas</th><th>Receita</th><th>T.Criadas</th><th>T.Conc.</th><th></th>';
   document.getElementById('tbody-rel').innerHTML=colabs.map(c=>{
     let dt=0,min=0,ta=0,tv=0,tr=0,tCri=0,tCon=0;
