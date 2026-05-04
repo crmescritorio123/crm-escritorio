@@ -505,7 +505,7 @@ textarea{resize:vertical;min-height:80px;}
       <!-- TABELA -->
       <div class="card">
         <div class="card-header"><div class="card-title">Base de Clientes</div><input class="search-input" placeholder="🔍 Buscar cliente..." id="busca-cliente" oninput="renderClientes()"></div>
-        <table class='mobile-cards'><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Área</th><th>Status</th><th></th></tr></thead><tbody id="tbody-clientes"></tbody></table>
+        <table class='mobile-cards'><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>Fechado por</th><th>Área</th><th>Status</th><th></th></tr></thead><tbody id="tbody-clientes"></tbody></table>
       </div>
     </section>
 
@@ -669,6 +669,7 @@ textarea{resize:vertical;min-height:80px;}
       <div class="form-group"><label>E-mail</label><input type="email" id="c-email"></div>
       <div class="form-group"><label>Área Jurídica</label><select id="c-area"><option>Trabalhista</option><option>Cível</option><option>Família</option><option>Criminal</option><option>Empresarial</option><option>Tributário</option><option>Outro</option></select></div>
       <div class="form-group"><label>Status</label><select id="c-status"><option value="ativo">Ativo</option><option value="prospecto">Prospecto</option><option value="inativo">Inativo</option></select></div>
+      <div class="form-group"><label>Fechado por</label><select id="c-fechadopor"></select></div>
       <div class="form-group full"><label>Observações</label><textarea id="c-obs"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-cliente')">Cancelar</button><button class="btn btn-gold" onclick="salvarCliente()">Cadastrar</button></div>
@@ -936,7 +937,7 @@ function eu() { return U ? U.nome : ''; }
 
 function minhasT() { if(isAdmin()) return S.tarefas; if(isCliente()) return []; return S.tarefas.filter(t=>t.responsavel===eu()||t.criadoPor===eu()); }
 function meusA() { if(isAdmin()) return S.atendimentos; if(isCliente()) return []; return S.atendimentos.filter(a=>a.responsavel===eu()||a.criadoPor===eu()); }
-function minhasV() { if(isAdmin()) return S.vendas; if(isCliente()) return []; return S.vendas.filter(v=>v.criadoPor===eu()); }
+function minhasV() { if(isAdmin()) return S.vendas; if(isCliente()) return []; return S.vendas.filter(v=>v.criadoPor===eu()||v.responsavel===eu()); }
 function meuPonto() {
   if(isAdmin()) {
     // Convert ponto object to array for rendering
@@ -1005,7 +1006,16 @@ function nav(id) {
   if(id==='negociacao') renderNegociacao();
 }
 
-function openM(id){document.getElementById(id).classList.add('open');document.getElementById(id).style.display='flex';}
+function openM(id){
+  document.getElementById(id).classList.add('open');
+  document.getElementById(id).style.display='flex';
+  if(id==='m-cliente'){
+    const sel=document.getElementById('c-fechadopor');
+    if(sel){
+      sel.innerHTML=S.colaboradores.filter(x=>x.perfil!=='cliente').map(x=>`<option value="${x.nome}"${x.nome===eu()?' selected':''}>${x.nome}</option>`).join('');
+    }
+  }
+}
 function openMT(){fillColabs('t-resp',eu());openM('m-tarefa');}
 function closeM(id){
   var el=document.getElementById(id);if(!el)return;
@@ -1267,12 +1277,19 @@ function salvarVenda(){
 const V_TAG={fechado:'tag-green',negociacao:'tag-gold',proposta:'tag-blue',cancelado:'tag-red'};
 const V_LBL={fechado:'Fechado ✅',negociacao:'Negociação',proposta:'Proposta',cancelado:'Cancelado'};
 function renderVendas(){
+  const mes=new Date().toISOString().slice(0,7);
   const list=minhasV().filter(v=>!filtroV||v.clienteNome?.toLowerCase().includes(filtroV)||v.servico?.toLowerCase().includes(filtroV));
-  const fech=minhasV().filter(v=>v.status==='fechado');
-  const rec=fech.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
-  document.getElementById('v-tot').textContent=S.vendas.length;
+  const fechMes=minhasV().filter(v=>v.status==='fechado'&&(v.data||v.data_venda||'').startsWith(mes));
+  const rec=fechMes.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  const mesLabel=new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  document.getElementById('v-tot').textContent=minhasV().filter(v=>(v.data||v.data_venda||'').startsWith(mes)).length;
   document.getElementById('v-rec').textContent='R$'+rec.toLocaleString('pt-BR',{minimumFractionDigits:2});
-  document.getElementById('v-neg').textContent=minhasV().filter(v=>v.status==='negociacao'||v.status==='proposta').length;
+  document.getElementById('v-neg').textContent=minhasV().filter(v=>(v.status==='negociacao'||v.status==='proposta')).length;
+  // Update labels
+  const labTot=document.querySelector('#sec-vendas .stat-card:nth-child(1) .stat-label');
+  const labRec=document.querySelector('#sec-vendas .stat-card:nth-child(2) .stat-label');
+  if(labTot)labTot.textContent='Contratos ('+mesLabel+')';
+  if(labRec)labRec.textContent='Receita ('+mesLabel+')';
   document.getElementById('tbody-vendas').innerHTML=list.length?list.map(v=>`<tr><td data-label="Data">${(v.data||v.data_venda)?new Date((v.data||v.data_venda)+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td data-label="Cliente" style="font-weight:600">${v.clienteNome}</td><td data-label="Serviço">${v.servico}</td><td data-label="Valor" style="color:var(--gold);font-weight:600;">R$ ${parseFloat(v.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td data-label="Pagamento" style="color:var(--muted)">${v.pgto||v.forma_pagamento||'-'}</td><td data-label="Status"><span class="tag ${V_TAG[v.status]||'tag-muted'}">${V_LBL[v.status]||v.status}</span></td><td data-label=""><button class="btn btn-danger btn-sm" onclick="delV(${v.id})">🗑</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nenhuma venda</td></tr>';
 }
 function delV(id){S.vendas=S.vendas.filter(v=>v.id!==id);save();renderVendas();}
@@ -1284,9 +1301,10 @@ function fillClientes(selId){const sel=document.getElementById(selId);if(!sel)re
 
 function renderClientes(){
   const q=(document.getElementById('busca-cliente')?.value||'').toLowerCase();
+  // Todos veem todos os clientes (para dar baixa em parcelas)
   const list=S.clientes.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.cpf&&c.cpf.includes(q)));
   const tbody=document.getElementById('tbody-clientes');
-  tbody.innerHTML=list.map((c,i)=>`<tr><td data-label="Nome" style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td data-label="CPF/CNPJ" style="color:var(--muted)">${c.cpf||'-'}</td><td data-label="Telefone">${c.tel||'-'}</td><td data-label="E-mail" style="color:var(--muted)">${c.email||'-'}</td><td data-label="Área">${c.area||'-'}</td><td data-label="Status"><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td>${isAdmin()?`<td data-label=""><button class="btn btn-danger btn-sm" onclick="confirmarDelCliente(${c.id},event)">🗑</button></td>`:''}</tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum cliente</td></tr>';
+  tbody.innerHTML=list.map((c,i)=>`<tr><td data-label="Nome" style="font-weight:600;color:var(--gold);cursor:pointer;text-decoration:underline;" data-i="${i}">${c.nome}</td><td data-label="CPF/CNPJ" style="color:var(--muted)">${c.cpf||'-'}</td><td data-label="Telefone">${c.tel||'-'}</td><td data-label="Fechado por" style="color:var(--gold);font-size:12px;">${c.fechadoPor||c.criadoPor||'-'}</td><td data-label="Área">${c.area||'-'}</td><td data-label="Status"><span class="tag ${C_TAG[c.status]||'tag-muted'}">${c.status||'-'}</span></td>${isAdmin()?`<td data-label=""><button class="btn btn-danger btn-sm" onclick="confirmarDelCliente(${c.id},event)">🗑</button></td>`:''}</tr>`).join('')||'<tr><td colspan="7" class="empty-state">Nenhum cliente</td></tr>';
   tbody.querySelectorAll('td[data-i]').forEach(td=>{td.onclick=function(){abrirFicha(list[parseInt(this.dataset.i)].id);};});
 }
 
@@ -1316,7 +1334,7 @@ function deletarCliente(id) {
 
 function salvarCliente(){
   const nome=document.getElementById('c-nome').value.trim();if(!nome)return;
-  S.clientes.push({id:genId(),nome,cpf:document.getElementById('c-cpf').value,tel:document.getElementById('c-tel').value,email:document.getElementById('c-email').value,area:document.getElementById('c-area').value,status:document.getElementById('c-status').value,obs:document.getElementById('c-obs').value,acompanhamentos:[],contratos:[],criadoEm:new Date().toISOString(),criadoPor:eu()});
+  S.clientes.push({id:genId(),nome,cpf:document.getElementById('c-cpf').value,tel:document.getElementById('c-tel').value,email:document.getElementById('c-email').value,area:document.getElementById('c-area').value,status:document.getElementById('c-status').value,obs:document.getElementById('c-obs').value,fechadoPor:document.getElementById('c-fechadopor')?.value||eu(),acompanhamentos:[],contratos:[],criadoEm:new Date().toISOString(),criadoPor:eu()});
   addAtiv('👤 Novo cliente: '+nome);save();closeM('m-cliente');renderClientes();
   ['c-nome','c-cpf','c-tel','c-email','c-obs'].forEach(id=>document.getElementById(id).value='');
 }
@@ -1328,7 +1346,7 @@ function abrirFicha(id){
   if(!c.acompanhamentos)c.acompanhamentos=[];
   if(!c.contratos)c.contratos=[];
   document.getElementById('mf-nome').textContent=c.nome;
-  document.getElementById('mf-sub').textContent=[c.cpf,c.area,c.status].filter(Boolean).join(' · ');
+  document.getElementById('mf-sub').textContent=[c.cpf,c.area,c.status,c.fechadoPor?'Fechado por: '+c.fechadoPor:''].filter(Boolean).join(' · ');
   document.getElementById('mf-grid').innerHTML=
     `<div class="form-group"><label>Nome</label><input type="text" id="fe-nome" value="${(c.nome||'').replace(/"/g,'&quot;')}"></div>`+
     `<div class="form-group"><label>CPF/CNPJ</label><input type="text" id="fe-cpf" value="${(c.cpf||'').replace(/"/g,'&quot;')}"></div>`+
@@ -1336,6 +1354,7 @@ function abrirFicha(id){
     `<div class="form-group"><label>E-mail</label><input type="email" id="fe-email" value="${(c.email||'').replace(/"/g,'&quot;')}"></div>`+
     `<div class="form-group"><label>Área</label><select id="fe-area">${['Trabalhista','Cível','Família','Criminal','Empresarial','Tributário','Administrativo','Outro'].map(a=>`<option${c.area===a?' selected':''}>${a}</option>`).join('')}</select></div>`+
     `<div class="form-group"><label>Status</label><select id="fe-status"><option value="ativo"${c.status==='ativo'?' selected':''}>Ativo</option><option value="prospecto"${c.status==='prospecto'?' selected':''}>Prospecto</option><option value="inativo"${c.status==='inativo'?' selected':''}>Inativo</option></select></div>`+
+    `<div class="form-group"><label>Fechado por</label><select id="fe-fechadopor">${S.colaboradores.filter(x=>x.perfil!=='cliente').map(x=>`<option value="${x.nome}"${(c.fechadoPor||c.criadoPor)===x.nome?' selected':''}>${x.nome}</option>`).join('')}</select></div>`+
     `<div class="form-group full"><label>Observações</label><textarea id="fe-obs">${c.obs||''}</textarea></div>`;
   mfTab('dados');
   openM('m-ficha');
@@ -1359,6 +1378,8 @@ function salvarFicha(){
   c.area=document.getElementById('fe-area').value;
   c.status=document.getElementById('fe-status').value;
   c.obs=document.getElementById('fe-obs').value;
+  const fpEl=document.getElementById('fe-fechadopor');
+  if(fpEl)c.fechadoPor=fpEl.value;
   save();renderClientes();
   document.getElementById('mf-nome').textContent=c.nome;
   document.getElementById('mf-sub').textContent=[c.cpf,c.area,c.status].filter(Boolean).join(' · ');
@@ -1598,9 +1619,11 @@ function delNeg(id){
 function renderNegociacao(){
   if(!S.negociacoes) S.negociacoes = [];
   const busca = (document.getElementById('neg-busca')?.value||'').toLowerCase();
+  // Colaboradores veem apenas suas próprias negociações
+  const baseNeg = isAdmin()?S.negociacoes:S.negociacoes.filter(n=>n.criadoPor===eu()||n.responsavel===eu());
 
   document.getElementById('neg-board').innerHTML = NEG_COLS.map(col=>{
-    let items = S.negociacoes.filter(n=>n.status===col.k);
+    let items = baseNeg.filter(n=>n.status===col.k);
     if(busca) items = items.filter(n=>n.clienteNome.toLowerCase().includes(busca)||n.desc.toLowerCase().includes(busca));
 
     return `<div style="background:var(--dark-3);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;">
