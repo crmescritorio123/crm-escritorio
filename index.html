@@ -570,6 +570,28 @@ textarea{resize:vertical;min-height:80px;}
   </div>
 </div>
 
+<!-- MODAL EDITAR DATA PAGAMENTO -->
+<div class="modal-overlay" id="m-editar-datapag">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Corrigir Data de Pagamento</div>
+      <button class="modal-close" onclick="closeM('m-editar-datapag')">✕</button>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div id="medp-info" style="background:var(--dark-4);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;"></div>
+      <div class="form-group">
+        <label>📅 Data real em que o pagamento foi recebido *</label>
+        <input type="date" id="medp-data" style="font-size:15px;padding:12px 14px;">
+        <div style="font-size:11px;color:var(--gold);margin-top:6px;">⚠️ Corrija para o mês em que o valor foi efetivamente recebido. Isso ajusta a receita no dashboard.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('m-editar-datapag')">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarEdicaoDataPag()">✅ Salvar Correção</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAIS -->
 <div class="modal-overlay" id="m-tarefa">
   <div class="modal">
@@ -1418,8 +1440,65 @@ function mfRenderFin(){
     const r=ct.parcelas.filter(p=>p.pago).reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
     const tot=parseFloat(ct.total||ct.valor_total||0);
     const pct=tot>0?Math.round((r/tot)*100):0;
-    return`<div class="card"><div class="card-header"><div><div class="card-title" style="font-size:15px;">${ct.desc||ct.descricao}</div><div style="font-size:11px;color:var(--muted);">por ${ct.criadoPor} · ${new Date(ct.criadoEm).toLocaleDateString('pt-BR')}</div></div><div style="display:flex;align-items:center;gap:10px;"><div style="text-align:right;"><div style="font-size:11px;color:var(--muted);">Total</div><div style="font-family:'Cormorant Garamond',serif;font-size:20px;">R$ ${tot.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="mfDelContrato(${ct.id})">🗑</button>`:''}` + `</div></div><div style="padding:12px 16px;"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;"><span>Recebido: <strong style="color:var(--green)">R$ ${r.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></span><span>${pct}%</span></div><div style="background:var(--dark-5);border-radius:4px;height:6px;margin-bottom:14px;"><div style="background:linear-gradient(90deg,var(--green),var(--gold));height:6px;border-radius:4px;width:${pct}%;"></div></div><table style="width:100%;"><thead><tr>${['Parcela','Valor','Vencimento','Pago em','Status',''].map(h=>`<th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:var(--muted);text-align:left;">${h}</th>`).join('')}</tr></thead><tbody>${ct.parcelas.map(p=>{const venc=!p.pago&&(p.vencimento||p.vencto)&&(p.vencimento||p.vencto)<hoje;const vhj=!p.pago&&(p.vencimento||p.vencto)&&(p.vencimento||p.vencto)===hoje;const vd=p.vencimento||p.vencto;const pn=p.num||p.numero;return`<tr style="border-bottom:1px solid var(--border);"><td style="padding:8px;font-size:13px;">Parcela ${pn}</td><td style="padding:8px;font-size:13px;font-weight:600;color:var(--gold);">R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="padding:8px;font-size:12px;color:${venc?'var(--red)':vhj?'var(--gold)':'var(--muted)'};">${vd?new Date(vd+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${venc?' ⚠️':vhj?' (hoje)':''}</td><td style="padding:8px;font-size:12px;color:var(--muted);">${p.dataPag||p.data_pagamento||'—'}</td><td style="padding:8px;"><span class="tag ${p.pago?'tag-green':'tag-muted'}">${p.pago?'✅ Pago':'Pendente'}</span></td><td style="padding:8px;"><button class="btn btn-sm ${p.pago?'btn-ghost':'btn-gold'}" onclick="mfMarcarParcela(${ct.id},${pn},${!p.pago})">${p.pago?'Desfazer':'Marcar pago'}</button></td></tr>`;}).join('')}</tbody></table></div></div>`;
+    return`<div class="card"><div class="card-header"><div><div class="card-title" style="font-size:15px;">${ct.desc||ct.descricao}</div><div style="font-size:11px;color:var(--muted);">por ${ct.criadoPor} · ${new Date(ct.criadoEm).toLocaleDateString('pt-BR')}</div></div><div style="display:flex;align-items:center;gap:10px;"><div style="text-align:right;"><div style="font-size:11px;color:var(--muted);">Total</div><div style="font-family:'Cormorant Garamond',serif;font-size:20px;">R$ ${tot.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="mfDelContrato(${ct.id})">🗑</button>`:''}` + `</div></div><div style="padding:12px 16px;"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;"><span>Recebido: <strong style="color:var(--green)">R$ ${r.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></span><span>${pct}%</span></div><div style="background:var(--dark-5);border-radius:4px;height:6px;margin-bottom:14px;"><div style="background:linear-gradient(90deg,var(--green),var(--gold));height:6px;border-radius:4px;width:${pct}%;"></div></div><table style="width:100%;"><thead><tr>${['Parcela','Valor','Vencimento','Pago em','Status',''].map(h=>`<th style="padding:6px 8px;font-size:10px;text-transform:uppercase;color:var(--muted);text-align:left;">${h}</th>`).join('')}</tr></thead><tbody>${ct.parcelas.map(p=>{const venc=!p.pago&&(p.vencimento||p.vencto)&&(p.vencimento||p.vencto)<hoje;const vhj=!p.pago&&(p.vencimento||p.vencto)&&(p.vencimento||p.vencto)===hoje;const vd=p.vencimento||p.vencto;const pn=p.num||p.numero;return`<tr style="border-bottom:1px solid var(--border);"><td style="padding:8px;font-size:13px;">Parcela ${pn}</td><td style="padding:8px;font-size:13px;font-weight:600;color:var(--gold);">R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="padding:8px;font-size:12px;color:${venc?'var(--red)':vhj?'var(--gold)':'var(--muted)'};">${vd?new Date(vd+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${venc?' ⚠️':vhj?' (hoje)':''}</td><td style="padding:8px;font-size:12px;color:var(--muted);white-space:nowrap;">${p.dataPag||p.data_pagamento||'—'}${p.pago?` <button onclick="editarDataPag(${ct.id},${pn})" title="Corrigir data" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--gold);padding:0 2px;">✏️</button>`:''}</td><td style="padding:8px;"><span class="tag ${p.pago?'tag-green':'tag-muted'}">${p.pago?'✅ Pago':'Pendente'}</span></td><td style="padding:8px;"><button class="btn btn-sm ${p.pago?'btn-ghost':'btn-gold'}" onclick="mfMarcarParcela(${ct.id},${pn},${!p.pago})">${p.pago?'Desfazer':'Marcar pago'}</button></td></tr>`;}).join('')}</tbody></table></div></div>`;
   }).join(''):'<div class="empty-state"><span class="icon">💰</span>Nenhum contrato.</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// ✅ EDITAR DATA DE PAGAMENTO de parcela já paga
+// ═══════════════════════════════════════════════════
+let _editDataPag = null; // { ctId, pNum }
+
+function editarDataPag(ctId, pNum) {
+  const c = S.clientes.find(x => x.id == fichaId);
+  const ct = (c.contratos||[]).find(x => x.id === ctId);
+  if (!ct) return;
+  const p = ct.parcelas.find(x => (x.num === pNum || x.numero === pNum));
+  if (!p || !p.pago) return;
+
+  _editDataPag = { ctId, pNum };
+
+  // Preencher info
+  document.getElementById('medp-info').innerHTML =
+    `<strong style="color:var(--gold);">Parcela ${pNum}</strong> — R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}<br>` +
+    `Contrato: <strong>${ct.desc||ct.descricao}</strong><br>` +
+    `Data atual registrada: <span style="color:var(--red);font-weight:600;">${p.dataPag||p.data_pagamento||'não informada'}</span>`;
+
+  // Converter dataPag DD/MM/YYYY → YYYY-MM-DD para o input date
+  const dp = p.dataPag || p.data_pagamento || '';
+  if (dp) {
+    const pts = dp.split('/');
+    if (pts.length === 3) {
+      document.getElementById('medp-data').value = pts[2] + '-' + pts[1] + '-' + pts[0];
+    }
+  } else {
+    document.getElementById('medp-data').value = new Date().toISOString().slice(0,10);
+  }
+
+  openM('m-editar-datapag');
+}
+
+function salvarEdicaoDataPag() {
+  if (!_editDataPag) return;
+  const dataISO = document.getElementById('medp-data').value;
+  if (!dataISO) { alert('⚠️ Informe a data correta.'); return; }
+
+  const { ctId, pNum } = _editDataPag;
+  const c = S.clientes.find(x => x.id == fichaId);
+  const ct = (c.contratos||[]).find(x => x.id === ctId);
+  if (!ct) return;
+  const p = ct.parcelas.find(x => (x.num === pNum || x.numero === pNum));
+  if (!p) return;
+
+  const [ano, mes2, dia] = dataISO.split('-');
+  p.dataPag = dia + '/' + mes2 + '/' + ano;
+  p.data_pagamento = p.dataPag;
+
+  _editDataPag = null;
+  save();
+  closeM('m-editar-datapag');
+  mfRenderFin();
+  renderDash();
 }
 
 function mfDelContrato(id){
