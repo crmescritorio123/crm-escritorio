@@ -118,6 +118,18 @@ textarea{resize:vertical;min-height:80px;}
 ::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:10px;}
 #retencao-banner{display:none;background:rgba(201,168,76,.1);border-bottom:1px solid var(--border-s);padding:10px 32px;font-size:12px;color:var(--gold);line-height:1.8;letter-spacing:.02em;}
 
+/* ═══ SYNC STATUS BADGE ═══ */
+#sync-status {
+  position: fixed; bottom: 16px; right: 16px; z-index: 999;
+  background: var(--dark-3); border: 1px solid var(--border-s);
+  border-radius: 8px; padding: 6px 12px; font-size: 11px;
+  color: var(--muted); display: none; align-items: center; gap: 6px;
+  transition: all .3s;
+}
+#sync-status.show { display: flex; }
+#sync-status.ok { border-color: rgba(76,175,125,.4); color: var(--green); }
+#sync-status.error { border-color: rgba(201,76,76,.4); color: var(--red); }
+
 /* ═══ RESPONSIVE MOBILE ═══ */
 * { box-sizing: border-box; }
 img, video, iframe { max-width: 100%; }
@@ -140,7 +152,6 @@ img, video, iframe { max-width: 100%; }
 }
 .sidebar-drawer.open { left: 0; }
 
-/* Info de localização no ponto */
 .ponto-loc-badge {
   display: inline-flex; align-items: center; gap: 4px;
   background: rgba(76,126,201,.1); border: 1px solid rgba(76,126,201,.25);
@@ -264,6 +275,9 @@ img, video, iframe { max-width: 100%; }
 </head>
 <body>
 
+<!-- SYNC STATUS -->
+<div id="sync-status"></div>
+
 <!-- LOADER -->
 <div id="loader" style="display:none;position:fixed;inset:0;background:rgba(13,13,13,.85);z-index:9998;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
   <div style="width:40px;height:40px;border:3px solid var(--border-s);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
@@ -384,7 +398,6 @@ img, video, iframe { max-width: 100%; }
       <div class="card">
         <div class="clock-display" id="clock">00:00:00</div>
         <div class="clock-date" id="clock-date"></div>
-        <!-- Banner de status de localização -->
         <div id="geo-status" style="text-align:center;padding:0 0 12px;font-size:11px;color:var(--muted);display:none;"></div>
         <div class="ponto-actions">
           <button class="btn-ponto" style="background:linear-gradient(135deg,#4CAF7D,#2d8a5a);color:#fff;" onclick="baterPonto('entrada')">▶ Entrada</button>
@@ -501,7 +514,6 @@ img, video, iframe { max-width: 100%; }
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="neg-board"></div>
     </section>
 
-    <!-- MODAL ADICIONAR À NEGOCIAÇÃO -->
     <div class="modal-overlay" id="m-neg-add">
       <div class="modal" style="width:460px;">
         <div class="modal-header"><div class="modal-title">Adicionar à Negociação</div><button class="modal-close" onclick="closeM('m-neg-add')">✕</button></div>
@@ -790,7 +802,6 @@ function getDeviceInfo() {
   else if (/Firefox\//i.test(ua)) browser = 'Firefox';
   else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
   else if (/OPR\//i.test(ua)) browser = 'Opera';
-  // Versão do browser
   var vMatch = ua.match(new RegExp(browser + '\\/([\\d.]+)', 'i'));
   if(browser === 'Edge') { vMatch = ua.match(/Edg\/([\d.]+)/i); }
   var version = vMatch ? vMatch[1].split('.')[0] : '';
@@ -847,17 +858,57 @@ function getLocation(callback) {
 // ═══════════ FIREBASE CONFIG ═══════════
 const FB_URL = "https://crm-camila-952a5-default-rtdb.firebaseio.com";
 
+// ── CORREÇÃO CRÍTICA: todas as ops do Firebase são separadas por path ──
+// Ponto usa PATCH (merge) por colaborador/data para evitar sobrescrita
 async function fbGet(path) {
-  try { const r = await fetch(FB_URL + '/' + path + '.json'); return r.ok ? r.json() : null; } catch(e) { return null; }
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json');
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
 }
 async function fbSet(path, data) {
-  try { const r = await fetch(FB_URL + '/' + path + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); return r.ok; } catch(e) { return false; }
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+// ── NOVO: PATCH atômico para ponto — só atualiza campos específicos sem sobrescrever outros ──
+async function fbPatch(path, data) {
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch(e) { return false; }
 }
 async function fbPush(path, data) {
-  try { const r = await fetch(FB_URL + '/' + path + '.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); return r.ok ? r.json() : null; } catch(e) { return null; }
+  try {
+    const r = await fetch(FB_URL + '/' + path + '.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
 }
 async function fbDelete(path) {
   try { await fetch(FB_URL + '/' + path + '.json', { method: 'DELETE' }); } catch(e) {}
+}
+
+// ── Indicador visual de sync ──
+function showSync(msg, tipo) {
+  const el = document.getElementById('sync-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'show ' + (tipo||'');
+  clearTimeout(el._t);
+  if(tipo === 'ok') el._t = setTimeout(()=>{ el.className=''; }, 3000);
 }
 
 function showLoader(msg) { const el=document.getElementById('loader'); if(el){el.style.display='flex';document.getElementById('loader-msg').textContent=msg||'Aguarde...';} }
@@ -884,37 +935,86 @@ if (!S.negociacoes) S.negociacoes = [];
 const extrasColab = (S.colaboradores || []).filter(c => c.id > 5);
 S.colaboradores = [...COLABS_FIXOS, ...extrasColab];
 
+// ── CORREÇÃO: save() não sincroniza ponto — ponto tem sync próprio e atômico ──
 function save() {
   const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
   localStorage.setItem('crm_cb', JSON.stringify(sToSave));
   syncToFirebase();
 }
 
+// ── save especial para ponto: não usa debounce e não sincroniza o resto ──
+function savePonto() {
+  const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
+  localStorage.setItem('crm_cb', JSON.stringify(sToSave));
+  // NÃO chama syncToFirebase() — ponto já foi enviado atomicamente via fbPatch
+}
+
 let syncTimeout = null;
 function syncToFirebase() {
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async function() {
-    const data = { clientes: S.clientes, tarefas: S.tarefas, atendimentos: S.atendimentos, vendas: S.vendas, ponto: S.ponto, atividades: S.atividades.slice(0, 60), negociacoes: S.negociacoes };
-    await fbSet('crm', data);
-  }, 1000);
+    // ── CORREÇÃO: ponto NÃO é sincronizado aqui para evitar sobrescrita ──
+    const data = {
+      clientes: S.clientes,
+      tarefas: S.tarefas,
+      atendimentos: S.atendimentos,
+      vendas: S.vendas,
+      atividades: S.atividades.slice(0, 60),
+      negociacoes: S.negociacoes
+    };
+    showSync('⟳ Sincronizando...', '');
+    const ok = await fbSet('crm', data);
+    showSync(ok ? '✅ Sincronizado' : '❌ Falha no sync', ok ? 'ok' : 'error');
+  }, 1500);
 }
 
 async function loadFromFirebase() {
   showLoader('Sincronizando dados...');
   const data = await fbGet('crm');
   if (data) {
+    // ── CORREÇÃO: merge dos dados ao invés de sobrescrever ──
     if (data.clientes) S.clientes = data.clientes;
     if (data.tarefas) S.tarefas = data.tarefas;
     if (data.atendimentos) S.atendimentos = data.atendimentos;
     if (data.vendas) S.vendas = data.vendas;
-    if (data.ponto) S.ponto = data.ponto;
     if (data.atividades) S.atividades = data.atividades;
     if (data.negociacoes) S.negociacoes = data.negociacoes;
-    const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
-    localStorage.setItem('crm_cb', JSON.stringify(sToSave));
+    // ── CORREÇÃO: ponto carregado separadamente com merge ──
+    // NÃO sobrescreve S.ponto aqui
   }
+  // ── CORREÇÃO: ponto carregado do path dedicado, com merge dos dados locais ──
+  await loadPontoFromFirebase();
+  const sToSave = {...S, colaboradores: S.colaboradores.filter(c => c.id > 5)};
+  localStorage.setItem('crm_cb', JSON.stringify(sToSave));
   hideLoader();
 }
+
+// ── NOVO: carrega ponto do Firebase e faz MERGE com o localStorage (nunca perde dados) ──
+async function loadPontoFromFirebase() {
+  const pontoDB = await fbGet('ponto');
+  if (pontoDB) {
+    // Merge: para cada data/colaborador do Firebase, preserva o local se for mais completo
+    Object.entries(pontoDB).forEach(([data, users]) => {
+      if (!S.ponto[data]) S.ponto[data] = {};
+      Object.entries(users).forEach(([colab, p]) => {
+        if (!S.ponto[data][colab]) {
+          // Não existe local: usa o do Firebase
+          S.ponto[data][colab] = p;
+        } else {
+          // Existe nos dois: merge campo a campo (prioriza o que tem valor)
+          const local = S.ponto[data][colab];
+          const campos = ['entrada','saida_almoco','volta_almoco','saida',
+                          'loc_entrada','loc_saida_almoco','loc_volta_almoco','loc_saida',
+                          'localizacao','dispositivo','navegador'];
+          campos.forEach(function(campo) {
+            if (!local[campo] && p[campo]) local[campo] = p[campo];
+          });
+        }
+      });
+    });
+  }
+}
+
 function genId() { return Date.now() + Math.floor(Math.random()*1000); }
 
 // ═══════════ AUTH ═══════════
@@ -1073,7 +1173,7 @@ function renderDash() {
   document.getElementById('feed-tar').innerHTML=tp.map(t=>`<div class="activity-item"><div class="activity-dot" style="background:${t.prioridade==='urgente'?'#C94C4C':t.prioridade==='alta'?'#C9A84C':'#4C7EC9'}"></div><div><div style="font-size:13px;">${t.titulo}</div><div style="font-size:11px;color:var(--muted);">${t.area||''}${t.prazo?' · '+new Date(t.prazo+'T12:00:00').toLocaleDateString('pt-BR'):''}</div></div></div>`).join('')||'<div class="empty-state"><span class="icon">✅</span>Sem tarefas pendentes</div>';
 }
 
-// ═══════════ PONTO ═══════════
+// ═══════════ PONTO — LÓGICA CORRIGIDA ═══════════
 let clockInt;
 function initClock(){
   clearInterval(clockInt);
@@ -1085,35 +1185,61 @@ function initClock(){
   };tick();clockInt=setInterval(tick,1000);
 }
 
-function baterPonto(tipo) {
-  const n = new Date(), hoje = n.toISOString().slice(0,10), hora = n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}), user = eu();
-  if(!S.ponto[hoje]) S.ponto[hoje] = {};
-  if(!S.ponto[hoje][user]) S.ponto[hoje][user] = {};
-  S.ponto[hoje][user][tipo] = hora;
+// ── CORREÇÃO CENTRAL DO PONTO ──
+// Estratégia: 
+//   1. Salva imediatamente no localStorage e atualiza UI
+//   2. Envia via fbPatch para o path exato do colaborador/data (atômico, não apaga outros)
+//   3. Geolocalização atualiza o registro DEPOIS via outro fbPatch, sem risco de concorrência
+async function baterPonto(tipo) {
+  const n = new Date();
+  const hoje = n.toISOString().slice(0, 10);
+  const hora = n.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  const user = eu();
+  const di = getDeviceInfo();
 
-  // Captura dispositivo e navegador
-  var di = getDeviceInfo();
-  S.ponto[hoje][user].dispositivo = di.device;
-  S.ponto[hoje][user].navegador = di.browser;
+  // 1. Garante estrutura local
+  if (!S.ponto[hoje]) S.ponto[hoje] = {};
+  if (!S.ponto[hoje][user]) S.ponto[hoje][user] = {};
 
-  save();
-  const L = {entrada:'Entrada', saida_almoco:'Saída Almoço', volta_almoco:'Volta Almoço', saida:'Saída'};
-  addAtiv('⏱ Ponto: '+L[tipo]+' às '+hora+' · '+di.device);
+  // 2. Prepara o payload desta batida (só os campos novos)
+  const payload = {};
+  payload[tipo] = hora;
+  payload['dispositivo'] = di.device;
+  payload['navegador'] = di.browser;
+
+  // 3. Atualiza local
+  Object.assign(S.ponto[hoje][user], payload);
+  savePonto(); // salva local sem sync global
   renderPontoHoje();
   renderPontoHist();
 
-  // Captura localização de forma assíncrona (atualiza após obter)
+  // 4. Envia atomicamente para o Firebase no path do colaborador/data
+  //    PATCH = merge, nunca apaga outros colaboradores ou outras batidas do mesmo dia
+  const pontoPath = 'ponto/' + hoje + '/' + encodeURIComponent(user);
+  showSync('⟳ Salvando ponto...', '');
+  const ok = await fbPatch(pontoPath, payload);
+  showSync(ok ? '✅ Ponto salvo' : '❌ Erro ao salvar ponto', ok ? 'ok' : 'error');
+
+  // 5. Atividade (fire-and-forget via save normal)
+  const L = {entrada:'Entrada', saida_almoco:'Saída Almoço', volta_almoco:'Volta Almoço', saida:'Saída'};
+  S.atividades.unshift({id:genId(),txt:'⏱ Ponto: '+L[tipo]+' às '+hora+' · '+di.device,hora:hora,data_registro:n.toLocaleDateString('pt-BR'),autor:user});
+  if(S.atividades.length>60)S.atividades.pop();
+  save(); // sync do restante dos dados
+
+  // 6. Geolocalização: atualiza DEPOIS de forma independente, sem risco de apagar o ponto
   getLocation(function(loc) {
-    const locKey = 'loc_' + tipo;
-    if(S.ponto[hoje] && S.ponto[hoje][user]) {
-      S.ponto[hoje][user][locKey] = loc || '—';
-      // Usa a localização da entrada como principal
-      if(tipo === 'entrada' || !S.ponto[hoje][user].localizacao) {
-        S.ponto[hoje][user].localizacao = loc || '—';
-      }
-      save();
-      renderPontoHist();
+    if (!loc) return;
+    const locPayload = {};
+    locPayload['loc_' + tipo] = loc;
+    // Só define 'localizacao' na primeira batida (entrada) ou se ainda não tiver
+    if (tipo === 'entrada' || !S.ponto[hoje][user].localizacao) {
+      locPayload['localizacao'] = loc;
     }
+    Object.assign(S.ponto[hoje][user], locPayload);
+    savePonto();
+    renderPontoHist();
+    // Envia localização via PATCH separado (não interfere no ponto já salvo)
+    fbPatch(pontoPath, locPayload);
   });
 }
 
